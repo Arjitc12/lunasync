@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LunaSync" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="description" content="Her energy forecast, mapped to the moon. Know the vibe before you walk in." />
+  <title>LunaSync — Energy & Moon Forecast</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+
+  <style>
+    /* ═══ LunaSync Design System ══════════════════════════ */
+    :root {
+      --bg-deep:       #060612;
+      --bg-elevated:   #111128;
+      --glass-bg:      rgba(255,255,255,0.05);
+      --glass-border:  rgba(255,255,255,0.1);
+      --text-primary:  rgba(255,255,255,0.95);
+      --text-secondary:rgba(255,255,255,0.55);
+      --text-muted:    rgba(255,255,255,0.3);
+      --phase-menstrual:  #6b7db3;
+      --phase-follicular: #4ecdc4;
+      --phase-ovulatory:  #f9c74f;
+      --phase-luteal:     #f4a261;
+      --phase-pms:        #e07a8f;
+      --phase-peak-pms:   #c9184a;
+      --current-phase-color: #6b7db3;
+      --current-glow:        #6b7db3;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top:    env(safe-area-inset-top, 0px);
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html { font-size:16px; -webkit-text-size-adjust:100%; }
+    body {
+      font-family:'Inter',-apple-system,sans-serif;
+      background:var(--bg-deep); color:var(--text-primary);
+      min-height:100vh; min-height:100dvh; overflow-x:hidden;
+      -webkit-font-smoothing:antialiased; user-select:none; -webkit-user-select:none;
+    }
+    body::before {
+      content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+      background:
+        radial-gradient(ellipse at 20% 50%,rgba(107,125,179,.09) 0%,transparent 60%),
+        radial-gradient(ellipse at 80% 20%,rgba(78,205,196,.07) 0%,transparent 50%),
+        radial-gradient(ellipse at 50% 80%,rgba(249,199,79,.05) 0%,transparent 50%),
+        var(--bg-deep);
+    }
+    body::after {
+      content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+      background-image:
+        radial-gradient(1px 1px at 10% 15%,rgba(255,255,255,.4) 0%,transparent 100%),
+        radial-gradient(1px 1px at 30% 40%,rgba(255,255,255,.3) 0%,transparent 100%),
+        radial-gradient(1px 1px at 55% 25%,rgba(255,255,255,.5) 0%,transparent 100%),
+        radial-gradient(1px 1px at 75% 60%,rgba(255,255,255,.3) 0%,transparent 100%),
+        radial-gradient(1px 1px at 90% 10%,rgba(255,255,255,.4) 0%,transparent 100%),
+        radial-gradient(1px 1px at 15% 70%,rgba(255,255,255,.2) 0%,transparent 100%),
+        radial-gradient(2px 2px at 22% 30%,rgba(255,255,255,.25) 0%,transparent 100%),
+        radial-gradient(2px 2px at 70% 75%,rgba(255,255,255,.2) 0%,transparent 100%),
+        radial-gradient(1px 1px at 85% 35%,rgba(255,255,255,.4) 0%,transparent 100%);
+      animation:twinkle 8s ease-in-out infinite alternate;
+    }
+    @keyframes twinkle { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.7} }
+
+    #app {
+      position:relative; z-index:1; max-width:480px; margin:0 auto;
+      min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;
+      padding-top:var(--safe-top);
+      padding-bottom:calc(var(--safe-bottom) + 72px);
+    }
+    .hidden { display:none !important; }
+
+    /* ─── Setup ─── */
+    #setup-screen {
+      padding:48px 24px; display:flex; flex-direction:column;
+      justify-content:center; align-items:center; min-height:100vh; gap:20px; text-align:center;
+    }
+    .setup-moon { font-size:72px; display:block; animation:setupPulse 3s ease-in-out infinite; }
+    @keyframes setupPulse {
+      0%,100%{transform:scale(1);filter:drop-shadow(0 0 10px rgba(249,199,79,.3))}
+      50%{transform:scale(1.06);filter:drop-shadow(0 0 30px rgba(249,199,79,.6))}
+    }
+    .setup-title {
+      font-size:32px; font-weight:700; letter-spacing:-.5px;
+      background:linear-gradient(135deg,#fff 0%,var(--phase-ovulatory) 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .setup-subtitle { font-size:15px; color:var(--text-secondary); line-height:1.65; max-width:300px; }
+    .setup-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:28px; padding:24px; width:100%;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    }
+    .setup-field { margin-bottom:16px; text-align:left; }
+    .setup-field label { display:block; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:6px; }
+    .setup-field select, .setup-field input[type="date"] {
+      width:100%; padding:14px 16px;
+      background:rgba(255,255,255,.07); border:1px solid var(--glass-border);
+      border-radius:14px; color:var(--text-primary); font-family:inherit; font-size:16px;
+      -webkit-appearance:none; appearance:none; transition:all .3s ease;
+    }
+    .setup-field input[type="date"] { color-scheme:dark; }
+    .setup-field select:focus, .setup-field input:focus { outline:none; border-color:var(--phase-ovulatory); box-shadow:0 0 0 3px rgba(249,199,79,.15); }
+    .setup-field select option { background:var(--bg-elevated); }
+    .setup-or-divider { text-align:center; font-size:12px; color:var(--text-muted); margin:8px 0; }
+
+    .btn-cta {
+      width:100%; padding:16px; border:none; border-radius:16px;
+      background:linear-gradient(135deg,var(--phase-ovulatory),#f4a261);
+      color:#0a0a1a; font-family:inherit; font-size:16px; font-weight:700;
+      cursor:pointer; transition:all .2s ease; letter-spacing:-.2px;
+    }
+    .btn-cta:hover { opacity:.9; transform:scale(.99); }
+    .btn-cta:active { transform:scale(.97); }
+
+    /* ─── App Header ─── */
+    .app-header {
+      display:flex; align-items:center; justify-content:space-between; padding:20px 16px 8px;
+    }
+    .app-logo { display:flex; align-items:center; gap:8px; }
+    .app-logo-icon { font-size:22px; }
+    .app-logo-text {
+      font-size:18px; font-weight:700; letter-spacing:-.3px;
+      background:linear-gradient(135deg,#fff 0%,var(--current-phase-color) 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .header-date { font-size:12px; color:var(--text-muted); font-weight:500; }
+
+    /* ─── Tab Panels ─── */
+    .tab-panel { display:none; flex:1; overflow-y:auto; }
+    .tab-panel.active { display:block; }
+
+    /* ─── TODAY TAB ─── */
+    #tab-today { padding:8px 16px 24px; }
+    .moon-hero-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:28px; padding:36px 24px 20px; text-align:center;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      margin-bottom:12px; position:relative; overflow:hidden;
+    }
+    .moon-hero-card::before {
+      content:''; position:absolute; inset:-50%;
+      background:radial-gradient(circle at 50% 30%,var(--current-glow),transparent 60%);
+      opacity:.12; pointer-events:none; transition:all .6s ease;
+    }
+    #today-moon {
+      font-size:92px; display:block; line-height:1;
+      animation:moonFloat 4s ease-in-out infinite;
+      filter:drop-shadow(0 0 24px var(--current-glow)); transition:filter .6s ease; margin-bottom:16px;
+    }
+    @keyframes moonFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .phase-name { font-size:11px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--current-phase-color); margin-bottom:4px; transition:color .4s ease; }
+    .phase-label { font-size:28px; font-weight:700; letter-spacing:-.5px; margin-bottom:4px; }
+    .phase-tagline { font-size:14px; color:var(--text-secondary); font-style:italic; margin-bottom:16px; }
+    .day-counter-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      background:rgba(255,255,255,.04); border:1px solid var(--glass-border);
+      border-radius:999px; padding:8px 16px;
+    }
+    .day-counter-text { font-size:13px; font-weight:600; color:var(--current-phase-color); }
+    .days-left-text { font-size:12px; color:var(--text-secondary); }
+
+    .section-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:18px; padding:16px;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      margin-bottom:12px; transition:all .3s ease;
+    }
+    .section-title { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+    .mood-summary-text { font-size:15px; line-height:1.65; color:var(--text-secondary); }
+    .tips-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .tip-item {
+      font-size:14px; line-height:1.5; color:var(--text-secondary);
+      padding:10px; background:rgba(255,255,255,.03);
+      border-radius:8px; border-left:2px solid var(--current-phase-color); transition:all .2s ease;
+    }
+    .tip-item:hover { background:rgba(255,255,255,.06); color:var(--text-primary); }
+
+    .real-moon-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:18px; padding:14px 16px;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      margin-bottom:12px; display:flex; align-items:center; gap:14px;
+    }
+    .real-moon-emoji { font-size:38px; flex-shrink:0; }
+    .real-moon-info { flex:1; }
+    .real-moon-label { font-size:10px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:2px; }
+    .real-moon-name { font-size:15px; font-weight:600; margin-bottom:2px; }
+    .real-moon-illumination { font-size:12px; color:var(--text-muted); }
+    .sync-badge {
+      font-size:10px; font-weight:600; padding:4px 10px;
+      border-radius:999px; background:rgba(255,255,255,.06);
+      color:var(--text-muted); border:1px solid var(--glass-border);
+      white-space:nowrap; transition:all .3s ease; flex-shrink:0;
+    }
+    .sync-badge.synced { background:rgba(249,199,79,.12); color:var(--phase-ovulatory); border-color:rgba(249,199,79,.3); }
+
+    .reset-btn {
+      width:100%; padding:15px; background:rgba(255,255,255,.04);
+      border:1px dashed rgba(255,255,255,.2); border-radius:16px;
+      color:var(--text-secondary); font-family:inherit; font-size:14px; font-weight:500;
+      cursor:pointer; transition:all .3s ease;
+      display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;
+    }
+    .reset-btn:hover { background:rgba(255,255,255,.08); border-color:var(--current-phase-color); color:var(--text-primary); }
+
+    /* ─── FORECAST TAB ─── */
+    #tab-forecast { padding:8px 16px 24px; }
+    .forecast-header { font-size:22px; font-weight:700; margin-bottom:16px; letter-spacing:-.3px; }
+    .forecast-strip {
+      display:flex; gap:8px; overflow-x:auto; padding-bottom:8px;
+      scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+      scrollbar-width:none; -ms-overflow-style:none;
+    }
+    .forecast-strip::-webkit-scrollbar { display:none; }
+    .forecast-card {
+      flex:0 0 auto; width:104px;
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:18px; padding:14px 8px; text-align:center;
+      scroll-snap-align:start; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      display:flex; flex-direction:column; gap:4px; transition:all .2s ease;
+    }
+    .forecast-card.today { border-color:var(--current-phase-color); background:rgba(255,255,255,.07); }
+    .forecast-card.transition-day { border-color:rgba(255,255,255,.25); }
+    .forecast-day { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); }
+    .forecast-card.today .forecast-day { color:var(--current-phase-color); }
+    .forecast-date { font-size:18px; font-weight:700; }
+    .forecast-moon { font-size:26px; }
+    .forecast-tag { font-size:10px; font-weight:600; }
+    .forecast-tip { font-size:9px; color:var(--text-muted); line-height:1.3; }
+    .forecast-transition-label { font-size:8px; color:rgba(255,255,255,.5); letter-spacing:.5px; text-transform:uppercase; }
+    .forecast-full-list { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+    .forecast-full-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:16px; padding:14px 16px;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      display:flex; align-items:center; gap:14px;
+    }
+    .forecast-full-moon { font-size:32px; flex-shrink:0; }
+    .forecast-full-info { flex:1; min-width:0; }
+    .forecast-full-date-label { font-size:11px; font-weight:600; color:var(--text-muted); margin-bottom:2px; }
+    .forecast-full-phase { font-size:15px; font-weight:600; margin-bottom:2px; }
+    .forecast-full-tip { font-size:12px; color:var(--text-secondary); line-height:1.4; }
+    .transition-badge {
+      font-size:9px; font-weight:700; padding:2px 7px;
+      border-radius:999px; background:rgba(255,255,255,.1);
+      color:rgba(255,255,255,.6); margin-left:6px; letter-spacing:.5px; text-transform:uppercase;
+    }
+
+    /* ─── CALENDAR TAB ─── */
+    #tab-calendar { padding:8px 16px 24px; }
+    .calendar-header-row {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:16px;
+    }
+    .calendar-title { font-size:22px; font-weight:700; letter-spacing:-.3px; }
+    .cal-nav { display:flex; align-items:center; gap:12px; }
+    .cal-nav-btn {
+      width:36px; height:36px; border-radius:50%;
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      color:var(--text-primary); font-size:16px; cursor:pointer; transition:all .2s ease;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .cal-nav-btn:hover { background:rgba(255,255,255,.1); border-color:var(--current-phase-color); }
+    .cal-month-label { font-size:14px; font-weight:600; color:var(--text-secondary); min-width:120px; text-align:center; }
+    .cal-day-headers {
+      display:grid; grid-template-columns:repeat(7,1fr);
+      margin-bottom:6px; gap:3px;
+    }
+    .cal-day-header { font-size:10px; font-weight:600; color:var(--text-muted); text-align:center; padding:4px 0; letter-spacing:.5px; }
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr);
+      gap:3px; margin-bottom:16px;
+    }
+    .cal-cell {
+      aspect-ratio:1; border-radius:10px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:1px; cursor:pointer; transition:all .15s ease;
+      background:rgba(255,255,255,.02); border:1px solid transparent;
+      position:relative;
+    }
+    .cal-cell:hover { background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.15); transform:scale(1.05); }
+    .cal-cell.empty { cursor:default; background:transparent; border:none; }
+    .cal-cell.empty:hover { background:transparent; border:none; transform:none; }
+    .cal-cell.today { border-color:var(--current-phase-color); background:rgba(255,255,255,.06); }
+    .cal-cell.phase-start { border-color:rgba(255,255,255,.3); }
+    .cal-day-num { font-size:11px; font-weight:600; line-height:1; }
+    .cal-dot {
+      width:14px; height:14px; border-radius:50%;
+      background:var(--cell-color,rgba(255,255,255,.3)); opacity:.75;
+      transition:all .2s ease;
+    }
+    .cal-cell:hover .cal-dot { opacity:1; transform:scale(1.15); }
+    .cal-cell.today .cal-dot { opacity:1; box-shadow:0 0 8px var(--cell-color); }
+    .cal-new-cycle-dot {
+      position:absolute; top:2px; right:2px;
+      width:5px; height:5px; border-radius:50%;
+      background:white; opacity:.6;
+    }
+
+    /* Calendar legend */
+    .cal-legend {
+      display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:16px;
+    }
+    .cal-legend-item {
+      display:flex; align-items:center; gap:8px;
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:10px; padding:8px 10px;
+    }
+    .cal-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .cal-legend-name { font-size:11px; font-weight:600; }
+    .cal-legend-days { font-size:9px; color:var(--text-muted); }
+
+    /* Calendar detail popup */
+    .cal-detail-popup {
+      background:var(--bg-elevated); border:1px solid var(--glass-border);
+      border-radius:18px; padding:16px; margin-bottom:12px;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      animation:fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+    .cal-detail-header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+    .cal-detail-moon { font-size:36px; }
+    .cal-detail-info { flex:1; }
+    .cal-detail-date { font-size:12px; color:var(--text-muted); margin-bottom:2px; }
+    .cal-detail-phase { font-size:17px; font-weight:700; }
+    .cal-detail-tip { font-size:13px; color:var(--text-secondary); line-height:1.5; }
+
+    /* ─── TIMELINE TAB ─── */
+    #tab-timeline { padding:8px 16px 24px; display:flex; flex-direction:column; align-items:center; gap:20px; }
+    .timeline-header { font-size:22px; font-weight:700; align-self:flex-start; letter-spacing:-.3px; }
+    .wheel-wrapper { width:100%; max-width:320px; aspect-ratio:1; position:relative; }
+    #cycle-wheel { width:100%; height:100%; border-radius:50%; }
+    .phase-legend { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .legend-item {
+      display:flex; align-items:center; gap:8px;
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:14px; padding:10px;
+    }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .legend-name { font-size:11px; font-weight:600; }
+    .legend-days { font-size:10px; color:var(--text-muted); }
+
+    /* ─── SETTINGS TAB ─── */
+    #tab-settings { padding:8px 16px 24px; }
+    .settings-header { font-size:22px; font-weight:700; margin-bottom:20px; letter-spacing:-.3px; }
+    .settings-group { margin-bottom:20px; }
+    .settings-group-label { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; padding:0 4px; }
+    .settings-card {
+      background:var(--glass-bg); border:1px solid var(--glass-border);
+      border-radius:18px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); overflow:hidden;
+    }
+    .settings-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px; border-bottom:1px solid var(--glass-border); gap:16px;
+    }
+    .settings-row:last-child { border-bottom:none; }
+    .settings-row-label { font-size:15px; font-weight:500; }
+    .settings-row-sublabel { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .settings-value-display { font-size:14px; font-weight:500; color:var(--current-phase-color); text-align:right; max-width:160px; }
+    .settings-row select, .settings-row input[type="time"] {
+      background:rgba(255,255,255,.08); border:1px solid var(--glass-border);
+      border-radius:8px; color:var(--text-primary); font-family:inherit; font-size:14px;
+      padding:6px 10px; -webkit-appearance:none; appearance:none; transition:all .2s ease;
+    }
+    .settings-row select:focus, .settings-row input[type="time"]:focus { outline:none; border-color:var(--current-phase-color); }
+    .settings-row select option { background:var(--bg-elevated); }
+    .settings-row input[type="time"] { color-scheme:dark; }
+
+    /* Upcoming notif info */
+    .notif-info-row {
+      padding:10px 16px; background:rgba(255,255,255,.03);
+      border-top:1px solid var(--glass-border); border-bottom:none;
+    }
+    .notif-info-text { font-size:12px; color:var(--text-muted); line-height:1.5; }
+
+    .toggle-switch { position:relative; width:51px; height:31px; flex-shrink:0; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-track { position:absolute; inset:0; background:rgba(255,255,255,.15); border-radius:15.5px; cursor:pointer; transition:all .3s ease; }
+    .toggle-track::after {
+      content:''; position:absolute; width:27px; height:27px; background:white;
+      border-radius:50%; top:2px; left:2px; transition:all .3s ease; box-shadow:0 2px 8px rgba(0,0,0,.3);
+    }
+    .toggle-switch input:checked + .toggle-track { background:var(--phase-follicular); }
+    .toggle-switch input:checked + .toggle-track::after { transform:translateX(20px); }
+
+    .action-btn {
+      width:100%; padding:14px 16px; border:1px solid var(--glass-border);
+      border-radius:14px; font-family:inherit; font-size:14px; font-weight:500;
+      cursor:pointer; transition:all .2s ease; display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .action-btn-secondary { background:rgba(255,255,255,.04); color:var(--text-secondary); }
+    .action-btn-secondary:hover { background:rgba(255,255,255,.08); color:var(--text-primary); }
+    .action-btn-danger { background:rgba(201,24,74,.06); color:var(--phase-peak-pms); border-color:rgba(201,24,74,.2); }
+    .action-btn-danger:hover { background:rgba(201,24,74,.12); border-color:rgba(201,24,74,.4); }
+
+    /* ─── BOTTOM TAB BAR ─── */
+    .tab-bar {
+      position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+      width:100%; max-width:480px;
+      background:rgba(10,10,26,.9); border-top:1px solid var(--glass-border);
+      backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+      display:flex; align-items:center; padding-bottom:var(--safe-bottom); z-index:100;
+    }
+    .tab-btn {
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+      padding:8px 0; background:none; border:none; cursor:pointer;
+      color:var(--text-muted); font-family:inherit; transition:all .2s ease;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .tab-btn.active { color:var(--current-phase-color); }
+    .tab-icon { font-size:20px; line-height:1; }
+    .tab-label { font-size:9px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+
+    /* ─── Reset Modal ─── */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.72);
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      z-index:200; display:none; align-items:flex-end; justify-content:center;
+      padding-bottom:var(--safe-bottom);
+    }
+    .modal-overlay.visible { display:flex; }
+    .modal-sheet {
+      background:var(--bg-elevated); border:1px solid var(--glass-border);
+      border-radius:28px 28px 0 0; padding:20px 24px 32px; width:100%; max-width:480px;
+      animation:slideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .modal-handle { width:36px; height:4px; background:var(--glass-border); border-radius:2px; margin:0 auto 20px; }
+    .modal-title { font-size:20px; font-weight:700; margin-bottom:6px; }
+    .modal-subtitle { font-size:14px; color:var(--text-secondary); margin-bottom:20px; line-height:1.5; }
+
+    /* Quick reset buttons */
+    .reset-quick-btns { display:flex; gap:8px; margin-bottom:16px; }
+    .reset-quick-btn {
+      flex:1; padding:13px; border:1px solid var(--glass-border);
+      border-radius:14px; font-family:inherit; font-size:13px; font-weight:600;
+      cursor:pointer; transition:all .2s ease; background:rgba(255,255,255,.04);
+      color:var(--text-secondary); text-align:center;
+    }
+    .reset-quick-btn:hover { background:rgba(255,255,255,.09); color:var(--text-primary); border-color:var(--current-phase-color); }
+    .reset-quick-btn.selected { background:rgba(255,255,255,.1); color:var(--text-primary); border-color:var(--current-phase-color); }
+
+    .modal-divider { display:flex; align-items:center; gap:12px; margin:16px 0; }
+    .modal-divider-line { flex:1; height:1px; background:var(--glass-border); }
+    .modal-divider-text { font-size:11px; color:var(--text-muted); font-weight:500; }
+
+    .modal-field { margin-bottom:16px; }
+    .modal-field label { display:block; font-size:13px; font-weight:500; color:var(--text-secondary); margin-bottom:6px; }
+    .modal-field select, .modal-field input[type="date"] {
+      width:100%; padding:14px 16px; background:rgba(255,255,255,.06);
+      border:1px solid var(--glass-border); border-radius:14px;
+      color:var(--text-primary); font-family:inherit; font-size:16px;
+      -webkit-appearance:none; appearance:none;
+    }
+    .modal-field input[type="date"] { color-scheme:dark; }
+    .modal-field select:focus, .modal-field input:focus { outline:none; border-color:var(--current-phase-color); }
+    .modal-field select option { background:var(--bg-elevated); }
+
+    .modal-actions { display:flex; gap:8px; margin-top:16px; }
+    .btn-primary {
+      flex:1; padding:15px; border:none; border-radius:14px;
+      background:var(--current-phase-color); color:var(--bg-deep);
+      font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s ease;
+    }
+    .btn-primary:hover { opacity:.9; }
+    .btn-secondary-modal {
+      flex:1; padding:15px; background:rgba(255,255,255,.06);
+      border:1px solid var(--glass-border); border-radius:14px;
+      color:var(--text-secondary); font-family:inherit; font-size:15px; font-weight:500; cursor:pointer; transition:all .2s ease;
+    }
+    .btn-secondary-modal:hover { background:rgba(255,255,255,.1); color:var(--text-primary); }
+
+    /* ─── Toast ─── */
+    #toast {
+      position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:rgba(20,20,40,.96); border:1px solid var(--glass-border);
+      border-radius:999px; padding:10px 20px; font-size:14px; font-weight:500;
+      color:var(--text-primary); z-index:300; opacity:0;
+      transition:all .3s cubic-bezier(.4,0,.2,1); white-space:nowrap;
+      box-shadow:0 8px 32px rgba(0,0,0,.4); pointer-events:none;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    }
+    #toast.visible { opacity:1; transform:translateX(-50%) translateY(0); }
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SETUP SCREEN ════════════════════════════════════════════ -->
+  <div id="setup-screen">
+    <span class="setup-moon">🌙</span>
+    <h1 class="setup-title">LunaSync</h1>
+    <p class="setup-subtitle">Her energy forecast, mapped to the moon.<br/>Know the vibe before you walk in.</p>
+    <div class="setup-card">
+      <form id="setup-form">
+        <div class="setup-field">
+          <label for="setup-days-ago">Her new cycle started…</label>
+          <select id="setup-days-ago">
+            <option value="0">Today</option>
+            <option value="1">1 day ago</option>
+            <option value="2">2 days ago</option>
+            <option value="3">3 days ago</option>
+            <option value="4">4 days ago</option>
+            <option value="5">5 days ago</option>
+          </select>
+        </div>
+        <div class="setup-or-divider">— or pick exact date —</div>
+        <div class="setup-field">
+          <label for="setup-exact-date">Exact cycle start date</label>
+          <input type="date" id="setup-exact-date" />
+        </div>
+        <div class="setup-field">
+          <label for="setup-cycle-length">Her usual cycle length</label>
+          <select id="setup-cycle-length">
+            <option value="26">26 days (short)</option>
+            <option value="27">27 days</option>
+            <option value="28">28 days (average)</option>
+            <option value="29" selected>29 days (lunar)</option>
+            <option value="30">30 days</option>
+            <option value="31">31 days (long)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-cta" id="btn-setup-submit">🌙 Start Tracking</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══ MAIN APP ════════════════════════════════════════════════ -->
+  <div id="main-app" class="hidden">
+    <header class="app-header">
+      <div class="app-logo">
+        <span class="app-logo-icon">🌙</span>
+        <span class="app-logo-text">LunaSync</span>
+      </div>
+      <div class="header-date" id="header-date"></div>
+    </header>
+
+    <!-- TODAY TAB -->
+    <div id="tab-today" class="tab-panel active">
+      <div class="moon-hero-card">
+        <span id="today-moon">🌑</span>
+        <div class="phase-name" id="today-phase-name">Dark Moon Phase</div>
+        <div class="phase-label" id="today-label">Dark Moon</div>
+        <div class="phase-tagline" id="today-tagline">Rest &amp; restoration mode.</div>
+        <div class="day-counter-bar">
+          <span class="day-counter-text" id="today-day-counter">Day 1 of 29</span>
+          <span class="days-left-text" id="today-days-left">28 days until next cycle</span>
+        </div>
+      </div>
+      <div class="section-card">
+        <div class="section-title">Today's Energy</div>
+        <p class="mood-summary-text" id="today-mood-summary"></p>
+      </div>
+      <div class="section-card">
+        <div class="section-title">Read The Room 💡</div>
+        <ul class="tips-list" id="today-tips"></ul>
+      </div>
+      <div class="real-moon-card">
+        <span class="real-moon-emoji" id="real-moon-emoji">🌑</span>
+        <div class="real-moon-info">
+          <div class="real-moon-label">Real Moon Tonight</div>
+          <div class="real-moon-name" id="real-moon-name">Calculating…</div>
+          <div class="real-moon-illumination" id="real-moon-illumination">—</div>
+        </div>
+        <span class="sync-badge" id="sync-badge">—</span>
+      </div>
+      <button class="reset-btn" id="btn-reset-today">🌑 New Cycle — Mark Start</button>
+    </div>
+
+    <!-- FORECAST TAB -->
+    <div id="tab-forecast" class="tab-panel">
+      <h2 class="forecast-header">7-Day Forecast</h2>
+      <div class="forecast-strip" id="forecast-strip"></div>
+      <div class="forecast-full-list" id="forecast-full-list"></div>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div id="tab-calendar" class="tab-panel">
+      <div class="calendar-header-row">
+        <h2 class="calendar-title">Moon Calendar</h2>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" id="cal-prev" aria-label="Previous month">‹</button>
+          <div class="cal-month-label" id="cal-month-label">April 2026</div>
+          <button class="cal-nav-btn" id="cal-next" aria-label="Next month">›</button>
+        </div>
+      </div>
+
+      <div id="cal-detail-container"></div>
+
+      <div class="cal-day-headers">
+        <div class="cal-day-header">S</div>
+        <div class="cal-day-header">M</div>
+        <div class="cal-day-header">T</div>
+        <div class="cal-day-header">W</div>
+        <div class="cal-day-header">T</div>
+        <div class="cal-day-header">F</div>
+        <div class="cal-day-header">S</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+
+      <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#6b7db3"></div><div><div class="cal-legend-name">🌑 Dark Moon</div><div class="cal-legend-days">Days 1–5</div></div></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4ecdc4"></div><div><div class="cal-legend-name">🌒 Rising Moon</div><div class="cal-legend-days">Days 6–13</div></div></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#f9c74f"></div><div><div class="cal-legend-name">🌕 Full Moon</div><div class="cal-legend-days">Days 14–16</div></div></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#f4a261"></div><div><div class="cal-legend-name">🌖 Waning Moon</div><div class="cal-legend-days">Days 17–22</div></div></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e07a8f"></div><div><div class="cal-legend-name">🌘 Inner Season</div><div class="cal-legend-days">Days 23–26</div></div></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#c9184a"></div><div><div class="cal-legend-name">⚡ Storm Season</div><div class="cal-legend-days">Days 27–29</div></div></div>
+      </div>
+    </div>
+
+    <!-- CYCLE WHEEL TAB -->
+    <div id="tab-timeline" class="tab-panel">
+      <h2 class="timeline-header">Cycle Wheel</h2>
+      <div class="wheel-wrapper">
+        <canvas id="cycle-wheel"></canvas>
+      </div>
+      <div class="phase-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#6b7db3"></div><div><div class="legend-name">🌑 Dark Moon</div><div class="legend-days">Days 1–5</div></div></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4ecdc4"></div><div><div class="legend-name">🌒 Rising Moon</div><div class="legend-days">Days 6–13</div></div></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f9c74f"></div><div><div class="legend-name">🌕 Full Moon</div><div class="legend-days">Days 14–16</div></div></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f4a261"></div><div><div class="legend-name">🌖 Waning Moon</div><div class="legend-days">Days 17–22</div></div></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e07a8f"></div><div><div class="legend-name">🌘 Inner Season</div><div class="legend-days">Days 23–26</div></div></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c9184a"></div><div><div class="legend-name">⚡ Storm Season</div><div class="legend-days">Days 27–29</div></div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="tab-panel">
+      <h2 class="settings-header">Settings</h2>
+      <div class="settings-group">
+        <div class="settings-group-label">Cycle</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div><div class="settings-row-label">Current Cycle Start</div><div class="settings-row-sublabel">Day 1 of active cycle</div></div>
+            <div class="settings-value-display" id="setting-start-date">—</div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Cycle Length</div><div class="settings-row-sublabel">Days per cycle</div></div>
+            <select id="setting-cycle-length">
+              <option value="26">26 days</option><option value="27">27 days</option>
+              <option value="28">28 days</option><option value="29">29 days</option>
+              <option value="30">30 days</option><option value="31">31 days</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-label">Smart Alerts</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Phase-Change Alerts</div>
+              <div class="settings-row-sublabel">Notify when energy shifts</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" id="setting-notif-toggle" /><span class="toggle-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Alert Time</div><div class="settings-row-sublabel">Morning of each phase shift</div></div>
+            <input type="time" id="setting-notif-time" value="08:00" />
+          </div>
+          <div class="notif-info-row">
+            <div class="notif-info-text" id="next-notif-info">Enable alerts to see when the next one fires.</div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-label">Actions</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="action-btn action-btn-secondary" id="btn-reset-settings">🌑 Mark New Cycle Start</button>
+          <button class="action-btn action-btn-secondary" id="btn-test-notif">🔔 Send Test Alert</button>
+          <button class="action-btn action-btn-danger" id="btn-clear-data">🗑️ Clear All Data</button>
+        </div>
+      </div>
+      <div class="section-card" style="text-align:center;margin-top:8px;">
+        <div class="section-title">How It Works</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-top:8px;">
+          Tracking is based on <strong style="color:var(--text-secondary)">calendar day counting</strong> from cycle start — not guesswork.<br/><br/>
+          The ~29-day energy cycle mirrors the lunar month, so moon phases serve as a natural visual language. When her cycle aligns with the real moon, you'll see a sync badge.<br/><br/>
+          All data is stored <strong style="color:var(--text-secondary)">only on this device</strong>.
+        </p>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:14px;opacity:.4;">v2.0 · LunaSync</p>
+      </div>
+    </div>
+
+    <!-- BOTTOM TAB BAR — 5 tabs -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="today" id="tab-btn-today"><span class="tab-icon">🌙</span><span class="tab-label">Today</span></button>
+      <button class="tab-btn" data-tab="forecast" id="tab-btn-forecast"><span class="tab-icon">📅</span><span class="tab-label">Forecast</span></button>
+      <button class="tab-btn" data-tab="calendar" id="tab-btn-calendar"><span class="tab-icon">📆</span><span class="tab-label">Calendar</span></button>
+      <button class="tab-btn" data-tab="timeline" id="tab-btn-timeline"><span class="tab-icon">⭕</span><span class="tab-label">Cycle</span></button>
+      <button class="tab-btn" data-tab="settings" id="tab-btn-settings"><span class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
+    </nav>
+  </div>
+
+  <!-- ══ RESET MODAL ═════════════════════════════════════════════ -->
+  <div id="reset-modal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">🌑 New Cycle Begins</h2>
+      <p class="modal-subtitle">Her energy is resetting. When did the new cycle start?</p>
+
+      <!-- Quick options -->
+      <div class="reset-quick-btns">
+        <button class="reset-quick-btn selected" id="reset-today-btn" onclick="selectResetQuick('today')">
+          Started Today
+        </button>
+        <button class="reset-quick-btn" id="reset-days-btn" onclick="selectResetQuick('days')">
+          A Few Days Ago
+        </button>
+      </div>
+
+      <!-- Days ago (shown for "few days ago") -->
+      <div class="modal-field" id="reset-days-field" style="display:none;">
+        <label for="reset-days-ago">How many days ago?</label>
+        <select id="reset-days-ago">
+          <option value="1">1 day ago</option>
+          <option value="2">2 days ago</option>
+          <option value="3">3 days ago</option>
+          <option value="4">4 days ago</option>
+          <option value="5">5 days ago</option>
+        </select>
+      </div>
+
+      <div class="modal-divider">
+        <div class="modal-divider-line"></div>
+        <div class="modal-divider-text">OR</div>
+        <div class="modal-divider-line"></div>
+      </div>
+
+      <!-- Exact date picker -->
+      <div class="modal-field">
+        <label for="reset-exact-date">Pick exact date</label>
+        <input type="date" id="reset-exact-date" placeholder="Select date" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary-modal" id="btn-modal-cancel">Cancel</button>
+        <button class="btn-primary" id="btn-modal-confirm">✅ Set Cycle Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  LunaSync v2 — Energy & Moon Forecast
+// ══════════════════════════════════════════════════════════════
+
+// ── Phase Profiles (energy language, not clinical) ─────────────
+const PHASE_PROFILES = {
+  menstrual: {
+    name:'Dark Moon Phase', moonEmoji:'🌑', label:'Dark Moon',
+    color:'var(--phase-menstrual)', glowColor:'#6b7db3',
+    tagline:'Low tide. Rest is power.',
+    moodSummary:'Low energy, deeply introspective, high need for comfort and stillness. Emotionally sensitive.',
+    tipShort:'Be her anchor.',
+    tips:[
+      '🤍 She needs presence, not problem-solving. Just be there.',
+      '🍫 Warm food, hot drinks, soft blankets — this is her love language right now.',
+      '🛋️ Movie night > going out. Low stimulation is gold.',
+      '🚫 Skip the big plans or serious conversations.',
+      '💌 A small, thoughtful gesture lands hard today.'
+    ],
+    notifPlayful:'🌑 Dark moon energy today. Chocolate on standby. Be her cozy safe space 🍫',
+    notifClinical:'New cycle start — low energy phase. Support mode recommended.',
+    phaseStartAlert:true
+  },
+  follicular: {
+    name:'Rising Moon Phase', moonEmoji:'🌒', label:'Rising Moon',
+    color:'var(--phase-follicular)', glowColor:'#4ecdc4',
+    tagline:'The tide is coming in ✨',
+    moodSummary:'Rising energy, bright and optimistic, open to new ideas. This is the window for plans and adventures.',
+    tipShort:'Make plans.',
+    tips:[
+      '🌱 She\'s feeling fresh and curious — initiate something new!',
+      '💬 Great window for meaningful conversations.',
+      '🎉 Suggest a trip, restaurant, experience — she\'s receptive.',
+      '⚡ Her energy is climbing — match her enthusiasm.',
+      '🧠 Sharp and decisive. Best time to make decisions together.'
+    ],
+    notifPlayful:'🌒 Rising moon energy ✨ She\'s waking up. Great day to plan something fun.',
+    notifClinical:'Follicular phase: rising energy and mood. Good window for plans and conversations.',
+    phaseStartAlert:true
+  },
+  ovulatory: {
+    name:'Full Moon Phase', moonEmoji:'🌕', label:'Full Moon',
+    color:'var(--phase-ovulatory)', glowColor:'#f9c74f',
+    tagline:'Peak energy. She\'s glowing 💛',
+    moodSummary:'Peak confidence, highest energy, deeply social and magnetic. The golden window.',
+    tipShort:'Golden window.',
+    tips:[
+      '✨ She\'s at her most magnetic and confident. Match her energy.',
+      '💛 This is the peak — plan something special, say the important things.',
+      '📍 Best week for date nights, big talks, or special occasions.',
+      '🗣️ Communication is effortless now. Don\'t waste it.',
+      '🚀 She\'ll say yes to almost anything exciting.'
+    ],
+    notifPlayful:'🌕 Full moon energy 💛 She\'s glowing! Drop everything and plan something special.',
+    notifClinical:'Ovulatory phase: peak energy and confidence. Best window for connection and big conversations.',
+    phaseStartAlert:true
+  },
+  early_luteal: {
+    name:'Waning Moon Phase', moonEmoji:'🌖', label:'Waning Moon',
+    color:'var(--phase-luteal)', glowColor:'#f4a261',
+    tagline:'Tide is turning — keep it cozy.',
+    moodSummary:'Energy gradually winding down, mild cravings starting, still fairly stable but beginning to slow.',
+    tipShort:'Keep it cozy.',
+    tips:[
+      '🍕 Cravings are starting — be the snack hero.',
+      '😴 Energy is gently dropping. Don\'t overbook her schedule.',
+      '🤝 She appreciates steadiness and calm right now.',
+      '📺 Low-key activities beat adventurous ones.',
+      '💬 Good time for light conversation, not heavy topics.'
+    ],
+    notifPlayful:'🌖 Energy shifting. Keep it cozy today — snacks appreciated 🍕',
+    notifClinical:'Early luteal phase: gradual energy decrease, cravings may start. Keep plans relaxed.',
+    phaseStartAlert:true
+  },
+  pms: {
+    name:'Inner Season', moonEmoji:'🌘', label:'Inner Season',
+    color:'var(--phase-pms)', glowColor:'#e07a8f',
+    tagline:'Storm warning. Gentle approach only. ⚠️',
+    moodSummary:'Heightened emotional sensitivity, possible mood swings, fatigue, low patience threshold.',
+    tipShort:'Tread lightly.',
+    tips:[
+      '⚠️ Emotional sensitivity is high — every word counts.',
+      '🚫 Zero criticism, no debates, no big discussions.',
+      '🍫 Chocolate, comfort food, warmth. Always.',
+      '🤗 Physical affection if she wants it — read the room.',
+      '🎧 If she needs space, give it graciously. It\'s not you.',
+      '📵 Check before making plans. Don\'t assume.'
+    ],
+    notifPlayful:'🌘 Inner season has arrived ⚠️ Stealth mode on. Bring snacks, ask no big questions.',
+    notifClinical:'PMS phase: heightened sensitivity and mood instability. Avoid conflict, increase support.',
+    phaseStartAlert:true
+  },
+  peak_pms: {
+    name:'Storm Season', moonEmoji:'⚡', label:'Storm Season',
+    color:'var(--phase-peak-pms)', glowColor:'#c9184a',
+    tagline:'Maximum sensitivity. All love, no friction. 🌑',
+    moodSummary:'Peak irritability, high anxiety, deep fatigue. New cycle imminent — this is the final stretch.',
+    tipShort:'Be her safe harbor.',
+    tips:[
+      '🔴 Final stretch. This is the most intense window.',
+      '🤫 Less words, more warmth. Actions speak louder now.',
+      '🧸 Comfort: warm blankeet, her favourite food, quiet togetherness.',
+      '🛑 Absolutely no: criticism, debates, or bringing up issues.',
+      '✅ Do: validate, affirm, be quietly present.',
+      '📅 New cycle is 1–3 days away.',
+      '💊 Make sure she has what she needs (pain relief, snacks, warmth).'
+    ],
+    notifPlayful:'⚡ Storm season — final 3 days 🌑 DEFCON snacks. Maximum patience. You\'ve got this.',
+    notifClinical:'Late luteal / PMDD window: max irritability and fatigue. New cycle in 1–3 days. Full support mode.',
+    phaseStartAlert:true
+  }
+};
+
+// ── Boundaries (for a 29-day reference) ──────────────────────────
+const BASE_BOUNDARIES = [
+  { day: 1,  phase: 'menstrual' },
+  { day: 6,  phase: 'follicular' },
+  { day: 14, phase: 'ovulatory' },
+  { day: 17, phase: 'early_luteal' },
+  { day: 23, phase: 'pms' },
+  { day: 27, phase: 'peak_pms' }
+];
+
+function getScaledBoundaries(cycleLength) {
+  const s = cycleLength / 29;
+  return BASE_BOUNDARIES.map(b => ({ day: Math.round(b.day * s), phase: b.phase }));
+}
+
+// ── Cycle Calculations ───────────────────────────────────────────
+function getCycleDay(startDateStr, today) {
+  if (!startDateStr) return 1;
+  today = today || new Date();
+  const start = new Date(startDateStr + 'T12:00:00');
+  const now = new Date(today);
+  now.setHours(12, 0, 0, 0);
+  return Math.floor((now - start) / 86400000) + 1;
+}
+
+function getAdjustedDay(cycleDay, cycleLength) {
+  return ((cycleDay - 1) % cycleLength + cycleLength) % cycleLength + 1;
+}
+
+function getPhase(cycleDay, cycleLength) {
+  cycleLength = cycleLength || 29;
+  const s = cycleLength / 29;
+  if (cycleDay <= Math.round(5 * s))  return 'menstrual';
+  if (cycleDay <= Math.round(13 * s)) return 'follicular';
+  if (cycleDay <= Math.round(16 * s)) return 'ovulatory';
+  if (cycleDay <= Math.round(22 * s)) return 'early_luteal';
+  if (cycleDay <= Math.round(26 * s)) return 'pms';
+  return 'peak_pms';
+}
+
+function getDaysUntilNextCycle(cycleDay, cycleLength) {
+  return cycleLength - cycleDay + 1;
+}
+
+function isPhaseTransition(cycleDay, cycleLength) {
+  const boundaries = getScaledBoundaries(cycleLength);
+  return boundaries.some(b => b.day === cycleDay);
+}
+
+function getNextPhaseTransition(startDateStr, cycleLength) {
+  // Find how many days until the next phase boundary
+  const today = new Date();
+  const rawDay = getCycleDay(startDateStr, today);
+  const adjDay = getAdjustedDay(rawDay, cycleLength);
+  const boundaries = getScaledBoundaries(cycleLength);
+
+  // Find next boundary after adjDay
+  let daysUntil = Infinity;
+  let nextPhase = null;
+  for (const b of boundaries) {
+    if (b.day > adjDay) {
+      daysUntil = b.day - adjDay;
+      nextPhase = b.phase;
+      break;
+    }
+  }
+  // Wrap to start of next cycle
+  if (nextPhase === null) {
+    daysUntil = cycleLength - adjDay + 1;
+    nextPhase = 'menstrual';
+  }
+
+  const nextDate = new Date(today);
+  nextDate.setDate(nextDate.getDate() + daysUntil);
+  return { daysUntil, nextPhase, nextDate };
+}
+
+function getForecast(startDateStr, cycleLength) {
+  const today = new Date();
+  return Array.from({length: 7}, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+    const raw = getCycleDay(startDateStr, date);
+    const adj = getAdjustedDay(raw, cycleLength);
+    const phase = getPhase(adj, cycleLength);
+    const isTransition = isPhaseTransition(adj, cycleLength);
+    return { date, cycleDay: adj, phase, profile: PHASE_PROFILES[phase], isTransition };
+  });
+}
+
+// ── Real Moon Phase ──────────────────────────────────────────────
+function getRealMoonPhase(date) {
+  if (typeof SunCalc === 'undefined') return { phase:0, phaseName:'Unknown', emoji:'🌙', illumination:'?' };
+  const illum = SunCalc.getMoonIllumination(date || new Date());
+  const p = illum.phase;
+  const waxing = Math.sin(illum.angle) >= 0;
+  const thresholds = [[.03,'New Moon'],[.22,waxing?'Waxing Crescent':'Waning Crescent'],[.28,waxing?'First Quarter':'Last Quarter'],[.47,waxing?'Waxing Gibbous':'Waning Gibbous'],[.53,'Full Moon'],[.72,'Waning Gibbous'],[.78,'Last Quarter'],[1,'Waning Crescent']];
+  let name = 'Waning Crescent';
+  for (const [t,n] of thresholds) { if (p <= t) { name = n; break; } }
+  const emoji = p<.03||p>.97?'🌑':p<.22?(waxing?'🌒':'🌘'):p<.28?(waxing?'🌓':'🌗'):p<.47?(waxing?'🌔':'🌖'):p<.53?'🌕':p<.72?'🌖':p<.78?'🌗':'🌘';
+  return { phase:p, phaseName:name, emoji, illumination:Math.round(illum.fraction*100)+'%' };
+}
+
+function checkMoonSync(realPhase, cyclePhase) {
+  const r = realPhase.phase<.1||realPhase.phase>.9?'new':realPhase.phase<.4?'waxing':realPhase.phase<.6?'full':'waning';
+  const m = {menstrual:'new',follicular:'waxing',ovulatory:'full',early_luteal:'waning',pms:'waning',peak_pms:'new'};
+  return r === m[cyclePhase];
+}
+
+// ── State ────────────────────────────────────────────────────────
+const DEFAULT_STATE = { cycleStartDate:null, cycleLength:29, notificationsEnabled:false, notificationTime:'08:00', setupComplete:false };
+function loadState() { try { const r = localStorage.getItem('lunasync'); return r ? Object.assign({},DEFAULT_STATE,JSON.parse(r)) : Object.assign({},DEFAULT_STATE); } catch { return Object.assign({},DEFAULT_STATE); } }
+function saveState(s) { localStorage.setItem('lunasync', JSON.stringify(s)); }
+let state = loadState();
+
+// ── Theme ────────────────────────────────────────────────────────
+function applyPhaseTheme(profile) {
+  document.documentElement.style.setProperty('--current-phase-color', profile.color);
+  document.documentElement.style.setProperty('--current-glow', profile.glowColor);
+}
+
+// ── Render Today ─────────────────────────────────────────────────
+function renderToday() {
+  if (!state.cycleStartDate) return;
+  const today = new Date();
+  const adjDay = getAdjustedDay(getCycleDay(state.cycleStartDate, today), state.cycleLength);
+  const phase = getPhase(adjDay, state.cycleLength);
+  const profile = PHASE_PROFILES[phase];
+  const daysLeft = getDaysUntilNextCycle(adjDay, state.cycleLength);
+  const realMoon = getRealMoonPhase(today);
+  const inSync = checkMoonSync(realMoon, phase);
+
+  applyPhaseTheme(profile);
+  document.getElementById('today-moon').textContent = profile.moonEmoji;
+  document.getElementById('today-moon').style.filter = `drop-shadow(0 0 28px ${profile.glowColor})`;
+  document.getElementById('today-phase-name').textContent = profile.name;
+  document.getElementById('today-label').textContent = profile.label;
+  document.getElementById('today-tagline').textContent = profile.tagline;
+  document.getElementById('today-mood-summary').textContent = profile.moodSummary;
+  document.getElementById('today-day-counter').textContent = `Day ${adjDay} of ${state.cycleLength}`;
+  document.getElementById('today-days-left').textContent =
+    daysLeft === 1 ? '⚠️ New cycle expected today' :
+    daysLeft <= 3 ? `⚠️ New cycle in ~${daysLeft} days` :
+    `${daysLeft} days until next cycle`;
+  document.getElementById('today-tips').innerHTML = profile.tips.map(t => `<li class="tip-item">${t}</li>`).join('');
+  document.getElementById('real-moon-emoji').textContent = realMoon.emoji;
+  document.getElementById('real-moon-name').textContent = realMoon.phaseName;
+  document.getElementById('real-moon-illumination').textContent = `${realMoon.illumination} illuminated`;
+  const sb = document.getElementById('sync-badge');
+  sb.textContent = inSync ? '✨ Moon synced!' : 'Out of sync';
+  sb.classList.toggle('synced', inSync);
+
+  document.querySelectorAll('.tab-btn.active').forEach(b => { b.style.color = profile.color; });
+}
+
+// ── Render Forecast ──────────────────────────────────────────────
+function renderForecast() {
+  if (!state.cycleStartDate) return;
+  const forecast = getForecast(state.cycleStartDate, state.cycleLength);
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const DAYS_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  document.getElementById('forecast-strip').innerHTML = forecast.map((d,i) => {
+    const isToday = i===0;
+    return `<div class="forecast-card ${isToday?'today':''} ${d.isTransition&&!isToday?'transition-day':''}">
+      <span class="forecast-day">${isToday?'Today':DAYS_S[d.date.getDay()]}</span>
+      <span class="forecast-date">${d.date.getDate()}</span>
+      <span class="forecast-moon">${d.profile.moonEmoji}</span>
+      <span class="forecast-tag" style="color:${d.profile.color}">${d.profile.label}</span>
+      <span class="forecast-tip">${d.profile.tipShort}</span>
+      ${d.isTransition&&!isToday?'<span class="forecast-transition-label">shift</span>':''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('forecast-full-list').innerHTML = forecast.map((d,i) => {
+    const isToday = i===0;
+    const tip = d.profile.tips[i % d.profile.tips.length];
+    const dateStr = d.date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const transitionBadge = d.isTransition&&!isToday ? '<span class="transition-badge">Phase Shift</span>' : '';
+    return `<div class="forecast-full-card" style="border-left:3px solid ${d.profile.glowColor}">
+      <span class="forecast-full-moon">${d.profile.moonEmoji}</span>
+      <div class="forecast-full-info">
+        <div class="forecast-full-date-label">${isToday?'Today':DAYS[d.date.getDay()]} · ${dateStr} · Day ${d.cycleDay}${transitionBadge}</div>
+        <div class="forecast-full-phase" style="color:${d.profile.color}">${d.profile.label}</div>
+        <div class="forecast-full-tip">${tip}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Calendar ─────────────────────────────────────────────────────
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendar() {
+  if (!state.cycleStartDate) return;
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date();
+
+  const monthLabel = new Date(calYear, calMonth, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById('cal-month-label').textContent = monthLabel;
+
+  let html = '';
+  // Empty leading cells
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell empty"></div>';
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(calYear, calMonth, day);
+    const raw = getCycleDay(state.cycleStartDate, date);
+    const adj = getAdjustedDay(raw, state.cycleLength);
+    const phase = getPhase(adj, state.cycleLength);
+    const profile = PHASE_PROFILES[phase];
+    const isToday = date.getFullYear()===today.getFullYear() && date.getMonth()===today.getMonth() && date.getDate()===today.getDate();
+    const isPhaseStart = isPhaseTransition(adj, state.cycleLength);
+    const isNewCycle = adj === 1;
+
+    html += `<div class="cal-cell${isToday?' today':''}${isPhaseStart?' phase-start':''}" 
+         style="--cell-color:${profile.glowColor}"
+         onclick="showCalDay(${calYear},${calMonth},${day})">
+      <span class="cal-day-num" style="color:${isToday?profile.glowColor:'var(--text-primary)'}">${day}</span>
+      <span class="cal-dot"></span>
+      ${isNewCycle?'<span class="cal-new-cycle-dot"></span>':''}
+    </div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function showCalDay(year, month, day) {
+  const date = new Date(year, month, day);
+  const raw = getCycleDay(state.cycleStartDate, date);
+  const adj = getAdjustedDay(raw, state.cycleLength);
+  const phase = getPhase(adj, state.cycleLength);
+  const profile = PHASE_PROFILES[phase];
+  const dateStr = date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const tip = profile.tips[adj % profile.tips.length];
+  const isTransition = isPhaseTransition(adj, state.cycleLength);
+
+  const container = document.getElementById('cal-detail-container');
+  container.innerHTML = `<div class="cal-detail-popup">
+    <div class="cal-detail-header">
+      <span class="cal-detail-moon">${profile.moonEmoji}</span>
+      <div class="cal-detail-info">
+        <div class="cal-detail-date">${dateStr} · Day ${adj}${isTransition?'  <span class="transition-badge">Phase Start</span>':''}</div>
+        <div class="cal-detail-phase" style="color:${profile.color}">${profile.label}</div>
+      </div>
+    </div>
+    <div class="cal-detail-tip">${tip}</div>
+  </div>`;
+}
+
+// ── Cycle Wheel ──────────────────────────────────────────────────
+function renderTimeline() {
+  const canvas = document.getElementById('cycle-wheel');
+  if (!canvas || !state.cycleStartDate) return;
+  const size = canvas.offsetWidth || 280;
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const cx = size/2, cy = size/2;
+  const outerR = size * .44, innerR = size * .28;
+  const len = state.cycleLength;
+
+  ctx.clearRect(0, 0, size, size);
+
+  const arcs = [
+    {s:1, e:Math.round(5*len/29), color:'#6b7db3'},
+    {s:Math.round(5*len/29)+1, e:Math.round(13*len/29), color:'#4ecdc4'},
+    {s:Math.round(13*len/29)+1, e:Math.round(16*len/29), color:'#f9c74f'},
+    {s:Math.round(16*len/29)+1, e:Math.round(22*len/29), color:'#f4a261'},
+    {s:Math.round(22*len/29)+1, e:Math.round(26*len/29), color:'#e07a8f'},
+    {s:Math.round(26*len/29)+1, e:len, color:'#c9184a'}
+  ];
+
+  arcs.forEach(({s, e, color}) => {
+    const sa = ((s-1)/len)*Math.PI*2 - Math.PI/2;
+    const ea = (e/len)*Math.PI*2 - Math.PI/2;
+    ctx.beginPath(); ctx.arc(cx,cy,outerR,sa,ea); ctx.arc(cx,cy,innerR,ea,sa,true); ctx.closePath();
+    ctx.fillStyle = color+'bb'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+
+  for (let d=1; d<=len; d++) {
+    const angle = ((d-1)/len)*Math.PI*2 - Math.PI/2;
+    const tl = d%7===0?8:3;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(angle)*(outerR+2), cy+Math.sin(angle)*(outerR+2));
+    ctx.lineTo(cx+Math.cos(angle)*(outerR+2+tl), cy+Math.sin(angle)*(outerR+2+tl));
+    ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  const adjDay = getAdjustedDay(getCycleDay(state.cycleStartDate), len);
+  const todayAngle = ((adjDay-1)/len)*Math.PI*2 - Math.PI/2;
+  const midR = (outerR+innerR)/2;
+  const tx = cx + Math.cos(todayAngle)*midR;
+  const ty = cy + Math.sin(todayAngle)*midR;
+  const g = ctx.createRadialGradient(tx,ty,0,tx,ty,14);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(.4,'rgba(255,255,255,.5)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(tx,ty,14,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+  ctx.beginPath(); ctx.arc(tx,ty,5.5,0,Math.PI*2); ctx.fillStyle='#ffffff'; ctx.fill();
+
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(255,255,255,.9)';
+  ctx.font=`bold ${size*.11}px Inter,sans-serif`;
+  ctx.fillText(`${adjDay}`, cx, cy-size*.06);
+  ctx.font=`${size*.045}px Inter,sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.fillText('day', cx, cy+size*.065);
+}
+
+// ── Settings Render ──────────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('setting-cycle-length').value = state.cycleLength;
+  document.getElementById('setting-notif-time').value = state.notificationTime;
+  document.getElementById('setting-notif-toggle').checked = state.notificationsEnabled;
+  const sd = document.getElementById('setting-start-date');
+  sd.textContent = state.cycleStartDate
+    ? new Date(state.cycleStartDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    : 'Not set';
+
+  // Show upcoming notification info
+  if (state.cycleStartDate) {
+    const {daysUntil, nextPhase, nextDate} = getNextPhaseTransition(state.cycleStartDate, state.cycleLength);
+    const profile = PHASE_PROFILES[nextPhase];
+    const dateStr = nextDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const ni = document.getElementById('next-notif-info');
+    if (state.notificationsEnabled) {
+      ni.textContent = `Next alert: ${dateStr} — ${profile.label} begins (in ${daysUntil} day${daysUntil===1?'':'s'})`;
+    } else {
+      ni.textContent = `Next shift: ${dateStr} — ${profile.label} (in ${daysUntil} day${daysUntil===1?'':'s'})`;
+    }
+  }
+}
+
+function renderAll() {
+  renderToday();
+  renderSettings();
+}
+
+// ── Toast ────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 3000);
+}
+
+// ── Reset Modal ──────────────────────────────────────────────────
+let resetMode = 'today'; // 'today' | 'days'
+
+function selectResetQuick(mode) {
+  resetMode = mode;
+  document.getElementById('reset-today-btn').classList.toggle('selected', mode==='today');
+  document.getElementById('reset-days-btn').classList.toggle('selected', mode==='days');
+  document.getElementById('reset-days-field').style.display = mode==='days' ? 'block' : 'none';
+  // Clear date picker when using quick mode
+  if (mode !== 'picker') document.getElementById('reset-exact-date').value = '';
+}
+
+function openResetModal() {
+  resetMode = 'today';
+  document.getElementById('reset-today-btn').classList.add('selected');
+  document.getElementById('reset-days-btn').classList.remove('selected');
+  document.getElementById('reset-days-field').style.display = 'none';
+  document.getElementById('reset-exact-date').value = '';
+  document.getElementById('reset-modal').classList.add('visible');
+}
+
+function closeResetModal() { document.getElementById('reset-modal').classList.remove('visible'); }
+
+function confirmReset() {
+  let startDate;
+  const exactDateVal = document.getElementById('reset-exact-date').value;
+
+  if (exactDateVal) {
+    // Date picker takes priority if filled
+    startDate = exactDateVal; // Already yyyy-mm-dd
+  } else if (resetMode === 'days') {
+    const daysAgo = parseInt(document.getElementById('reset-days-ago').value) || 1;
+    const d = new Date(); d.setDate(d.getDate()-daysAgo);
+    startDate = d.toISOString().split('T')[0];
+  } else {
+    startDate = new Date().toISOString().split('T')[0];
+  }
+
+  state.cycleStartDate = startDate;
+  saveState(state);
+  closeResetModal();
+  renderAll();
+  if (state.notificationsEnabled) scheduleNextPhaseNotif();
+  showToast('🌑 New cycle marked. Tracking from Day 1.');
+}
+
+// ── Phase-Transition Notifications ───────────────────────────────
+let swReg = null;
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try { swReg = await navigator.serviceWorker.register('service-worker.js'); }
+  catch(e) { console.warn('SW:', e); }
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  return (await Notification.requestPermission()) === 'granted';
+}
+
+function getMixedNotif(phase) {
+  const p = PHASE_PROFILES[phase];
+  // Alternate between playful and clinical based on random
+  return Math.random() > 0.4 ? p.notifPlayful : p.notifClinical;
+}
+
+// Post scheduling request to the Service Worker
+// The SW uses setTimeout internally — but running in SW context on iOS
+// it survives background suspension longer than page-level timers.
+function postScheduleToSW(title, body, delayMs, tag) {
+  if (!swReg || !swReg.active) {
+    // Fallback: page-level timer (works when app is open/recent)
+    setTimeout(() => {
+      if (Notification.permission !== 'granted') return;
+      if (swReg) swReg.showNotification(title, { body, icon:'./icons/icon-192.png', tag, renotify:true });
+      else new Notification(title, { body, icon:'./icons/icon-192.png', tag });
+    }, delayMs);
+    return;
+  }
+  swReg.active.postMessage({ type:'SCHEDULE_NOTIFICATION', title, body, delayMs, tag });
+}
+
+function scheduleNextPhaseNotif() {
+  if (!state.notificationsEnabled || !state.cycleStartDate) return;
+  if (Notification.permission !== 'granted') return;
+
+  const {daysUntil, nextPhase, nextDate} = getNextPhaseTransition(state.cycleStartDate, state.cycleLength);
+  const profile = PHASE_PROFILES[nextPhase];
+
+  const [h, m] = state.notificationTime.split(':').map(Number);
+  const fireAt = new Date(nextDate);
+  fireAt.setHours(h, m, 0, 0);
+  const delayMs = fireAt - new Date();
+
+  if (delayMs <= 0) return;
+
+  postScheduleToSW(
+    `${profile.moonEmoji} ${profile.label} begins`,
+    getMixedNotif(nextPhase),
+    delayMs,
+    'lunasync-phase'
+  );
+}
+
+// Storm warning — 2 days before Storm Season
+function scheduleStormWarning() {
+  if (!state.notificationsEnabled || !state.cycleStartDate) return;
+  if (Notification.permission !== 'granted') return;
+
+  const today = new Date();
+  const adjDay = getAdjustedDay(getCycleDay(state.cycleStartDate, today), state.cycleLength);
+  const peakStartDay = Math.round(27 * state.cycleLength / 29);
+  const warningDay = peakStartDay - 2;
+
+  let daysUntil = warningDay - adjDay;
+  if (daysUntil <= 0) daysUntil += state.cycleLength;
+
+  const [h, m] = state.notificationTime.split(':').map(Number);
+  const fireAt = new Date();
+  fireAt.setDate(fireAt.getDate() + daysUntil);
+  fireAt.setHours(h, m, 0, 0);
+  const delayMs = fireAt - today;
+
+  if (delayMs <= 0) return;
+
+  postScheduleToSW(
+    '⚠️ Heads up — Inner Season approaching',
+    'Storm season starts in 2 days. Stock up on snacks, patience, and warmth 🌘',
+    delayMs,
+    'lunasync-storm-warning'
+  );
+}
+
+async function toggleNotifications(enabled) {
+  if (enabled) {
+    const ok = await requestNotifPermission();
+    if (!ok) {
+      showToast('⚠️ Permission denied. Check your device Settings.');
+      document.getElementById('setting-notif-toggle').checked = false;
+      return;
+    }
+    state.notificationsEnabled = true;
+    saveState(state);
+    scheduleNextPhaseNotif();
+    scheduleStormWarning();
+    renderSettings();
+    showToast('🔔 Phase-change alerts enabled!');
+  } else {
+    state.notificationsEnabled = false;
+    saveState(state);
+    renderSettings();
+    showToast('🔕 Alerts disabled.');
+  }
+}
+
+function sendTestNotif() {
+  if (Notification.permission !== 'granted') { showToast('⚠️ Enable alerts first!'); return; }
+  const adjDay = getAdjustedDay(getCycleDay(state.cycleStartDate), state.cycleLength);
+  const phase = getPhase(adjDay, state.cycleLength);
+  const profile = PHASE_PROFILES[phase];
+  const body = getMixedNotif(phase);
+  const title = `${profile.moonEmoji} ${profile.label} — Day ${adjDay}`;
+  const notifOptions = { body, icon:'icons/icon-192.png', tag:'lunasync-test' };
+  if (swReg) swReg.showNotification(title, notifOptions);
+  else new Notification(title, notifOptions);
+}
+
+// ── Tab Switching ────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.classList.toggle('active', active);
+    if (active) {
+      const adjDay = state.cycleStartDate ? getAdjustedDay(getCycleDay(state.cycleStartDate), state.cycleLength) : 1;
+      const phase = getPhase(adjDay, state.cycleLength);
+      b.style.color = PHASE_PROFILES[phase]?.color || '';
+    } else {
+      b.style.color = '';
+    }
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id===`tab-${tab}`));
+
+  if (tab==='forecast') renderForecast();
+  if (tab==='calendar') setTimeout(() => { renderCalendar(); }, 40);
+  if (tab==='timeline') setTimeout(() => { renderTimeline(); }, 40);
+  if (tab==='settings') renderSettings();
+}
+
+// ── Date default for pickers ──────────────────────────────────────
+function setDatePickerDefaults() {
+  const today = new Date().toISOString().split('T')[0];
+  const maxDate = today;
+  document.getElementById('setup-exact-date').max = maxDate;
+  document.getElementById('reset-exact-date').max = maxDate;
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('header-date').textContent =
+    new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  setDatePickerDefaults();
+  await registerSW();
+
+  if (!state.setupComplete || !state.cycleStartDate) {
+    document.getElementById('setup-screen').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+  } else {
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    renderAll();
+    if (state.notificationsEnabled) { scheduleNextPhaseNotif(); scheduleStormWarning(); }
+  }
+
+  // Setup form
+  document.getElementById('setup-form').addEventListener('submit', e => {
+    e.preventDefault();
+    let startDate;
+    const exactDate = document.getElementById('setup-exact-date').value;
+    if (exactDate) {
+      startDate = exactDate;
+    } else {
+      const daysAgo = parseInt(document.getElementById('setup-days-ago').value)||0;
+      const d = new Date(); d.setDate(d.getDate()-daysAgo);
+      startDate = d.toISOString().split('T')[0];
+    }
+    state.cycleStartDate = startDate;
+    state.cycleLength = parseInt(document.getElementById('setup-cycle-length').value)||29;
+    state.setupComplete = true;
+    saveState(state);
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    renderAll();
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
+  });
+
+  // Reset
+  document.getElementById('btn-reset-today').addEventListener('click', openResetModal);
+  document.getElementById('btn-reset-settings').addEventListener('click', openResetModal);
+  document.getElementById('btn-modal-cancel').addEventListener('click', closeResetModal);
+  document.getElementById('btn-modal-confirm').addEventListener('click', confirmReset);
+  document.getElementById('reset-modal').addEventListener('click', e => { if(e.target===document.getElementById('reset-modal')) closeResetModal(); });
+
+  // Date picker clears quick-select when used
+  document.getElementById('reset-exact-date').addEventListener('change', () => {
+    document.getElementById('reset-today-btn').classList.remove('selected');
+    document.getElementById('reset-days-btn').classList.remove('selected');
+    document.getElementById('reset-days-field').style.display = 'none';
+    resetMode = 'picker';
+  });
+
+  // Settings listeners
+  document.getElementById('setting-cycle-length').addEventListener('change', e => {
+    state.cycleLength = parseInt(e.target.value)||29; saveState(state); renderAll();
+  });
+  document.getElementById('setting-notif-time').addEventListener('change', e => {
+    state.notificationTime = e.target.value; saveState(state);
+    if (state.notificationsEnabled) { scheduleNextPhaseNotif(); scheduleStormWarning(); }
+    renderSettings();
+  });
+  document.getElementById('setting-notif-toggle').addEventListener('change', e => { toggleNotifications(e.target.checked); });
+  document.getElementById('btn-test-notif').addEventListener('click', () => { sendTestNotif(); showToast('🔔 Test alert sent!'); });
+  document.getElementById('btn-clear-data').addEventListener('click', () => {
+    if (confirm('Clear all LunaSync data?')) { localStorage.removeItem('lunasync'); location.reload(); }
+  });
+
+  // Calendar prev/next
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar();
+  });
+
+  // Resize for wheel
+  window.addEventListener('resize', () => {
+    const active = document.querySelector('.tab-panel.active');
+    if (active && active.id==='tab-timeline') renderTimeline();
+  });
+});
+</script>
+</body>
+</html>
