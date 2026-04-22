@@ -1198,12 +1198,12 @@ function renderTimeline() {
   ctx.beginPath(); ctx.arc(tx,ty,5.5,0,Math.PI*2); ctx.fillStyle='#ffffff'; ctx.fill();
 
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(255,255,255,.9)';
-  ctx.font=`bold ${size*.11}px Inter,sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.95)';
+  ctx.font=`800 ${size*.11}px Outfit,sans-serif`;
   ctx.fillText(`${adjDay}`, cx, cy-size*.06);
-  ctx.font=`${size*.045}px Inter,sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,.45)';
-  ctx.fillText('day', cx, cy+size*.065);
+  ctx.font=`600 ${size*.045}px Outfit,sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,.5)';
+  ctx.fillText('DAY', cx, cy+size*.065);
 }
 
 // ── Settings Render ──────────────────────────────────────────────
