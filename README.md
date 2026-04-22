@@ -6,26 +6,7 @@ A private PWA that forecasts mood/energy by mapping a 29-day cycle to moon phase
 
 ---
 
-## Deploy to GitHub Pages (5 minutes)
 
-```bash
-# 1. Create a private repo on github.com (call it "lunasync")
-
-# 2. From this folder:
-git init
-git add .
-git commit -m "Initial build"
-git branch -M main
-git remote add origin git@github.com:YOUR_USERNAME/lunasync.git
-git push -u origin main
-```
-
-Then on GitHub:
-- Go to repo **Settings → Pages**
-- Source: **Deploy from branch → main / (root)**
-- Save. URL will be: `https://YOUR_USERNAME.github.io/lunasync/`
-
----
 
 ## Install on iPhone (Required for notifications)
 
